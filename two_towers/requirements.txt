@@ -1,0 +1,5 @@
+ipython==8.18
+jupyter
+tensorflow[and-cuda]==2.17.1
+matplotlib
+-e git+https://github.com/ktatarnikov/recommenders.git@tensorflow17.1
