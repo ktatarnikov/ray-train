@@ -17,10 +17,16 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-def preprocess_dataset(path: str) -> None:
-    load_raw(path)
-    extract_metadata(path)
-    generate_train_val_test(path)
+def preprocess_dataset(path: str, file: str) -> None:
+    decompress(path, file)
+    dataset_path = os.path.join(path, os.path.basename(file).split(".")[0])
+
+    load_raw(dataset_path)
+    extract_metadata(dataset_path)
+    generate_train_val_test(dataset_path)
+
+def decompress(path: str, file: str) -> None:
+    os.system(f"unzip {path}/{file} -d {path}")
 
 def load_raw(path: str):
     def skip_comment(row):
@@ -76,6 +82,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--path", required=True, type=str, help="Data path"
     )
+    parser.add_argument(
+        "--file", required=True, type=str, help="Dataset zip"
+    )
     args, _ = parser.parse_known_args()
 
-    preprocess_dataset(args.path)
+    preprocess_dataset(args.path, args.file)
