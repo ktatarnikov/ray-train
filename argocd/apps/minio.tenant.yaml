@@ -1,0 +1,82 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ml-tenant
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+  - repoURL: https://operator.min.io
+    chart: tenant
+    targetRevision: 5.0.14
+    helm:
+      valuesObject:
+        # Secret for configuring the root MinIO user
+        secrets:
+          name: ml-env-configuration
+          accessKey: minio
+          secretKey: minio123
+
+        tenant:
+          name: ml-tenant
+          # Kubernetes secret name that contains MinIO environment variable
+          # configurations
+          configuration:
+            name: ml-env-configuration
+          pools:
+            - name: ml-pool
+              # Number of MinIO Tenant pods
+              servers: 3
+              # Number of volumes per MinIO Tenant pod
+              volumesPerServer: 2
+              # Size of each volume
+              size: 1Gi
+              # Storage class of the volumes
+              storageClassName: standard
+              # Minimum and maximum resources requested for each pod
+              resources:
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+                limits:
+                  cpu: 2
+                  memory: 4Gi
+          # Enable automatic certificate generation and signing
+          certificate:
+            requestAutoCert: false
+          # Buckets to create during Tenant provisioning
+          buckets:
+            - name: datasets
+            - name: models
+            - name: temp
+        ingress:
+          api:
+            enabled: true
+            ingressClassName: "nginx"
+            annotations:
+              nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+            host: ml-tenant
+            path: /
+            pathType: Prefix
+          console:
+            enabled: true
+            ingressClassName: "nginx"
+            annotations:
+              nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+            host: ml-tenant-console
+            path: /
+            pathType: Prefix
+  destination:
+    namespace: minio-operator
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
